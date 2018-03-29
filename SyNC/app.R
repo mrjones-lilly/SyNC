@@ -18,30 +18,20 @@ ui <- fluidPage(
       #App logo
       img(src = "SyNC_logo.png", height = 108, width = 461),
       
-      #Testing input fields, basically example code
-      #selectInput("variable", "Variable:",c("Cylinders" = "cyl","Transmission" = "am","Gears" = "gear")),
-      # conditionalPanel(
-      #   condition = "recommended == true",
-      #   radioButtons("Matt", "Title here",
-      #          c("Yes" = "yes",
-      #            "No" = "no"
-      #            ))
-      # ),
-      # checkboxInput("somevalue", "Some value", FALSE),
-      #verbatimTextOutput("value"),
-      
-      #Instructions
-      helpText("This section of the tool is designed to help you determine WHO to communicate to based on WHAT you want to communicate. 
-Please note that the Communication Owner is accountable to Protect Lilly and to share the appropriate level of information with only those who 'need to know'. Refer to Protect Lilly for further guidance on how to classify and manage information."),
+      #Instructions - I'm going to try to concisely summarize prior help instruction.
+#      helpText("This section of the tool is designed to help you determine WHO to communicate to based on WHAT you want to communicate. 
+#Please note that the Communication Owner is accountable to Protect Lilly and to share the appropriate level of information with only those who 'need to know'. Refer to Protect Lilly for further guidance on how to classify and manage information."),
+      helpText("Welcome to SyNC, a tool to demystify what groups should be informed on topics to which you may be introducing process improvements."),
       
       # Input communications owner.  This currently has no functionality, because the from line is spoofable.
-      textInput("text", h3("Communication Owner"), 
-                       value = "label"),
-      helpText("Only the person listed as the Communication Owner will be able to send the email. This person is also accountable to the content of the communication as it relates to Protect Lilly."),
+      # Replace communications owner with authentication code
+      #textInput("text", h3("Communication Owner"), 
+      #                 value = "label"),
+      #helpText("Only the person listed as the Communication Owner will be able to send the email. This person is also accountable to the content of the communication as it relates to Protect Lilly."),
       
       # Select topic.  This changes pulls the highly recommended functions list from the back end.
       selectInput("topic", h3("Communication Topic"),c("Please click 'Update Topic Dropdown'")),
-      helpText("Open the drop down list to choose the topic that best fits your need. Selecting a topic will generate a list of highly recommended and other possible communication recipients. If your topic isn't in the list, you have two options:> Do not select a topic. This will not give you a recommended list of recipients, however you will be able to select recipients from the 'DSS Recipients', 'GSS Recipients', and 'Other Recipients' sections; or > Select a topic that closely aligns with your topic. This will populate the 'Highly Recommended Communication Recipients' section and help you choose the best recipients."),
+      helpText("Please select a topic. Selecting a topic will generate a list of highly recommended recipients. If your topic isn't in the list, you may contact synchelp@lilly.com to request that a topic be added.  You may also use any listed topic and manually select your audience from the recommended and non-recommended groups for that topic."),
       
       # Get current topics
       # Removed end-user ability to update topics for simplicity.  User must start a new session of the app to get any updates.
@@ -54,7 +44,7 @@ Please note that the Communication Owner is accountable to Protect Lilly and to 
       # lapply(1:length(groupVector), function(i) {
       #     checkboxInput(groupVector[i], groupVector[i],TRUE)
       #     }),
-      uiOutput("recMyGroup"), #Incidentally, this can be used the line-break buttons
+      uiOutput("recMyGroup"), #Incidentally, this can be used as a line-break for buttons
       
       
       # Non-recommended groups, dynamically generated in a loop over all lists associated with any topic, excluding the recommended groups
@@ -87,14 +77,15 @@ Please note that the Communication Owner is accountable to Protect Lilly and to 
       
       
       # Mail-based input values
-      textInput("from", "From:", value="jones_matthew_robert@gmail.com"),
+      #textInput("from", "From:", value="jones_matthew_robert@gmail.com"),
+      # Replace from: line with authentication code
       textInput("to", "To:", value="jones_matthew_robert@lilly.com"),
-      textInput("to2", "To:", value="matthew_robert_jones@lilly.com"),
+      textInput("to2", "To:", value="jones_matthew_robert@lilly.com"),
       textInput("subject", "Subject and Message", value="Subject"),
       
       #Message
       #textInput("message", "message", value="Double email"),
-      aceEditor("aceMessage", "Ace Message", value="Write message here."),
+      aceEditor("aceMessage", "Ace Message", value="Write message here"),
       
       # Execute e-mail button (send)
       actionButton("send", "Send mail")
@@ -105,84 +96,79 @@ Please note that the Communication Owner is accountable to Protect Lilly and to 
 server <- function(input, output, session) {
   
   ### All the non-button code starts here
-  # Have some strings to work with
-  # tabledata<-read.table("../SyNClists/mail_list.csv")
-  # unlisted<-unlist(tabledata)
+  # Pre-populate the topic list. 
+  # Removed end-user ability to update topics for simplicity.  User must start a new session of the app to get any topic list updates.
   readIn <- read.table("../SyNClists/topic_list.csv") # Fetching the current topic list
   choiceVector <- unique(c(t(readIn)))
   updateSelectInput(session, "topic", label = NULL, choices = choiceVector,  selected = NULL)
   
-  # Show a default group
-  groupVector <- c("Diamonds")
+  # Updating the to: field based on checkbox selection: initial mode.
+  updateTextInput(session, "to", value = paste("I'm an e-mail address"))
   
-  # Removed end-user ability to update topics for simplicity.  User must start a new session of the app to get any topic list updates.
-  # Watches the Update Topic Dropdown (refreshTopic) button.  When pressed, reads in the latest dataset.
-  # observe({
-  #   if(is.null(input$refreshTopic) || input$refreshTopic==0) return(NULL)
-  #   readIn <- read.table("../SyNClists/topic_list.csv") # Fetching the current topic list
-  #   choiceVector <- unique(c(t(readIn)))
-  #   updateSelectInput(session, "topic", label = NULL, choices = choiceVector,  selected = NULL)
-  #   showModal(modalDialog(
-  #        title = "Topic list updated",
-  #        "You may now select a topic.",
-  #        easyClose = TRUE,
-  #        footer = NULL
-  #       ))
-  # })
-  
-  
-  
-  
+  # Somehow get the user's email address when they log in.  Delete the from: field, use this value instead
+
   ### All button code is below here
   
   # Populate recommended group list
   observe({
     if(is.null(input$viewRec) || input$viewRec==0) return(NULL)
-    selectedTopic <- isolate(input$topic)
-    selectedTopicCSV <- paste(selectedTopic,".csv",sep="")
-    selectedTopicCSVPath <- paste("../SyNClists/",selectedTopicCSV,sep="")
-    #selectedTopicCSVPath <- "../SyNClists/CLUWE (Clinical Users Work Environment).csv"
+    selectedTopic <- isolate(input$topic) # Looking at what's in the topic dropdown
+    selectedTopicCSV <- paste(selectedTopic,".csv",sep="") # Using the csv naming convention from the lists app
+    selectedTopicCSVPath <- paste("../SyNClists/",selectedTopicCSV,sep="") # Finding that CSV in the right folder
     groupIn <- read.table(selectedTopicCSVPath) # Fetching the current associated list data
-    groupVector <- unique(c(t(groupIn)))
+    groupVector <- unique(c(t(groupIn))) # Making the read a vector
       showModal(modalDialog(
          title = "Recommendations populated",
          "This topic's recommended groups are now shown.",
          easyClose = TRUE,
          footer = NULL
-      ))
+      ))  # Talking to the user
 
     
-  }) 
-  
-  # Maybe populate recommended group list?
-  observe({
-    if(is.null(input$viewRec) || input$viewRec==0) return(NULL)
-  #groupVector <- c("Diamonds"), yes, you would need to initialize the variable here if you were to use it
-      # However, a better approach is to use the render output features
-      # conditionalPanel(
-      #   condition = "nonRecommendedShow == true",
-      #     lapply(1:length(groupVector), function(i) {
-      #     checkboxInput(groupVector[i], groupVector[i],TRUE)
-      #     })
-      # ),
-    
     output$recMyGroup <- renderUI({
-    groupVector <- c("Diamonds")
-      lapply(1:length(groupVector), function(i) {
+        lapply(1:length(groupVector), function(i) {
            checkboxInput(groupVector[i], groupVector[i],TRUE)
            })
-    })
-  })
+    }) # Dynamically generating checkboxes
     
-  # Showing and hiding non recommended
+    # Updating the to: field based on checkbox selection: updated recommended topics mode.
+    
+  })
+  
+  # Updating the to: field based on recommended checkbox selection: checkbox mode.
+    
+  # Populate non-recommended group list
   nonRecommendedShow<- TRUE
+   observe({
+    if(is.null(input$showNonRec) || input$showNonRec==0) return(NULL)
+    selectedTopic <- isolate(input$topic) # Looking at what's in the topic dropdown
+    selectedTopicCSV <- paste(selectedTopic,".csv",sep="") # Using the csv naming convention from the lists app
+    selectedTopicCSVPath <- paste("../SyNClists/",selectedTopicCSV,sep="") # Finding that CSV in the right folder
+    groupIn <- read.table(selectedTopicCSVPath) # Fetching the current associated list data
+    groupVector <- unique(c(t(groupIn))) # Making the read a vector
+      showModal(modalDialog(
+         title = "Other groups populated",
+         "This topic's non-recommended groups are now shown.",
+         easyClose = TRUE,
+         footer = NULL
+      ))  # Talking to the user
+  
+      output$recMyNonGroup <- renderUI({
+        lapply(1:length(groupVector), function(i) {
+           checkboxInput(groupVector[i], groupVector[i],TRUE)
+           })
+    }) # Dynamically generating checkboxes
+      
+   })
+  
+  # Updating the to: field based on non-recommended checkbox selection: checkbox mode.
   
   # Watch the dropdown Communication Topic (topic) to refresh the recommended and non-recommended groups
     
   #Send mail button
   observe({
     if(is.null(input$send) || input$send==0) return(NULL)
-    from <- isolate(input$from)
+    from <- "jones_matthew_robert@lilly.com"
     to <- isolate(input$to)
     to2 <- isolate(input$to2)
     subject <- isolate(input$subject)
