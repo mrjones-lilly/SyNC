@@ -60,7 +60,8 @@ checkboxInput("distribution", "View recommended distribution groups and/or send 
       # Shown via user button click
       
       # Show non-recommended groups
-      actionButton("showNonRec", "Show non-recommended groups"),
+      uiOutput("showNonRecUi"),
+      #actionButton("showNonRec", "Show non-recommended groups"),
       #groupVector <- c("Diamonds"), yes, you would need to initialize the variable here if you were to use it
       # However, a better approach is to use the render output features
       # conditionalPanel(
@@ -107,9 +108,7 @@ server <- function(input, output, session) {
    
   # Pre-populate the topic list. 
   # Removed end-user ability to update topics for simplicity.  User must start a new session of the app to get any topic list updates.
-  readIn <- read.table("../SyNClists/topic_list.csv") # Fetching the current topic list
-  choiceVector <- unique(c(t(readIn)))
-  updateSelectInput(session, "topic", label = NULL, choices = choiceVector,  selected = NULL)
+  
   
   # Updating the to: field based on checkbox selection: initial mode.
   updateTextInput(session, "to", value = paste("jones_matthew_robert@lilly.com"))
@@ -155,6 +154,10 @@ server <- function(input, output, session) {
     output$selectTopic <- renderUI({selectInput("topic", h3("Communication Topic"),c("Please click 'Update Topic Dropdown'"))})
     output$selectTopicHelp <- renderUI({helpText("Please select a topic. Selecting a topic will generate a list of highly recommended recipients. If your topic isn't in the list, you may contact synchelp@lilly.com to request that a topic be added.  You may also use any listed topic and manually select your audience from the recommended and non-recommended groups for that topic.")})
     output$viewRecUi <- renderUI({  actionButton("viewRec", "Show recommended groups")})
+    output$showNonRecUi <- renderUI({  actionButton("showNonRec", "Show non-recommended groups")})
+    readIn <- read.table("../SyNClists/topic_list.csv") # Fetching the current topic list
+    choiceVector <- unique(c(t(readIn)))
+    updateSelectInput(session, "topic", label = NULL, choices = choiceVector,  selected = NULL)
       showModal(modalDialog(
          title = "Do some talking",
          "Here in the talk section.",
